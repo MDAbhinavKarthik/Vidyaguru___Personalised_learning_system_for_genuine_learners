@@ -1,25 +1,10 @@
+databases:
+  - name: vidyaguru_db
+    databaseName: vidyaguru
+    user: vidyaguru
+    region: oregon
+
 services:
-  # PostgreSQL Database
-  - type: pserv
-    id: postgres
-    name: vidyaguru-postgres
-    plan: free
-    ipAllowList: []
-    env:
-      POSTGRES_USER: vidyaguru
-      POSTGRES_DB: vidyaguru
-      POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
-    region: oregon
-
-  # Redis Cache
-  - type: pserv
-    id: redis
-    name: vidyaguru-redis
-    plan: free
-    env:
-      REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
-    region: oregon
-
   # Backend API
   - type: web
     id: backend
@@ -27,30 +12,39 @@ services:
     runtime: python
     pythonVersion: 3.11
     plan: free
-    buildCommand: pip install -r requirements.txt && alembic upgrade head
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port 10000
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port 8000
     envVars:
+      # Database
       - key: DATABASE_URL
-        fromService:
-          type: pserv
-          id: postgres
+        fromDatabase:
+          name: vidyaguru_db
           property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: pserv
-          id: redis
-          property: connectionString
+      
+      # Secrets
       - key: SECRET_KEY
         scope: run
         value: ${{ secrets.SECRET_KEY }}
+      
       - key: GEMINI_API_KEY
         scope: run
         value: ${{ secrets.GEMINI_API_KEY }}
+      
+      # Environment
       - key: ENVIRONMENT
         value: production
+      
       - key: CORS_ORIGINS
         value: '["https://your-vercel-domain.vercel.app"]'
+      
       - key: LOG_LEVEL
         value: INFO
+      
+      # Optional: Redis (can be commented out if using in-memory cache)
+      - key: REDIS_URL
+        value: redis://localhost:6379/0
+    
     region: oregon
-    repo: # Leave empty if pushing via Render's CLI
+    repo:
+      branch: main
