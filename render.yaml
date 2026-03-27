@@ -1,0 +1,56 @@
+services:
+  # PostgreSQL Database
+  - type: pserv
+    id: postgres
+    name: vidyaguru-postgres
+    plan: free
+    ipAllowList: []
+    env:
+      POSTGRES_USER: vidyaguru
+      POSTGRES_DB: vidyaguru
+      POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+    region: oregon
+
+  # Redis Cache
+  - type: pserv
+    id: redis
+    name: vidyaguru-redis
+    plan: free
+    env:
+      REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+    region: oregon
+
+  # Backend API
+  - type: web
+    id: backend
+    name: vidyaguru-backend
+    runtime: python
+    pythonVersion: 3.11
+    plan: free
+    buildCommand: pip install -r requirements.txt && alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port 10000
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          type: pserv
+          id: postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: pserv
+          id: redis
+          property: connectionString
+      - key: SECRET_KEY
+        scope: run
+        value: ${{ secrets.SECRET_KEY }}
+      - key: GEMINI_API_KEY
+        scope: run
+        value: ${{ secrets.GEMINI_API_KEY }}
+      - key: ENVIRONMENT
+        value: production
+      - key: CORS_ORIGINS
+        value: '["https://your-vercel-domain.vercel.app"]'
+      - key: LOG_LEVEL
+        value: INFO
+    region: oregon
+    repo: # Leave empty if pushing via Render's CLI
