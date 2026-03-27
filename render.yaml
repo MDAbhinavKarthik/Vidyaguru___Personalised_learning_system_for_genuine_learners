@@ -2,6 +2,7 @@ databases:
   - name: vidyaguru_db
     databaseName: vidyaguru
     user: vidyaguru
+    plan: free
     region: oregon
 
 services:
@@ -15,11 +16,12 @@ services:
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    healthCheckPath: /health
     envVars:
       # Database
       - key: DATABASE_URL
         fromDatabase:
-          name: vidyaguru_db
+          id: vidyaguru_db
           property: connectionString
       
       # Secrets
@@ -40,10 +42,6 @@ services:
       
       - key: LOG_LEVEL
         value: INFO
-      
-      # Optional: Redis (can be commented out if using in-memory cache)
-      - key: REDIS_URL
-        value: redis://localhost:6379/0
     
     region: oregon
     repo:
