@@ -1,0 +1,207 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 44 43% 97%;
+    --foreground: 210 37% 17%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 37% 17%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 37% 17%;
+    --primary: 196 79% 35%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 35% 93%;
+    --secondary-foreground: 210 37% 17%;
+    --muted: 36 31% 93%;
+    --muted-foreground: 213 17% 40%;
+    --accent: 26 94% 58%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 34 29% 85%;
+    --input: 34 29% 85%;
+    --ring: 196 79% 35%;
+    --radius: 0.9rem;
+  }
+
+  .dark {
+    --background: 210 31% 11%;
+    --foreground: 45 32% 94%;
+    --card: 212 28% 14%;
+    --card-foreground: 45 32% 94%;
+    --popover: 212 28% 14%;
+    --popover-foreground: 45 32% 94%;
+    --primary: 193 85% 62%;
+    --primary-foreground: 210 31% 11%;
+    --secondary: 208 22% 19%;
+    --secondary-foreground: 45 32% 94%;
+    --muted: 208 22% 19%;
+    --muted-foreground: 36 20% 74%;
+    --accent: 27 89% 63%;
+    --accent-foreground: 210 31% 11%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 209 20% 24%;
+    --input: 209 20% 24%;
+    --ring: 193 85% 62%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans), system-ui, sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    background-image:
+      radial-gradient(circle at 16% 14%, hsl(196 79% 35% / 0.12), transparent 30%),
+      radial-gradient(circle at 83% 0%, hsl(26 94% 58% / 0.14), transparent 34%),
+      linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
+    min-height: 100vh;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display), var(--font-sans), serif;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer components {
+  .app-shell {
+    @apply relative min-h-screen;
+  }
+
+  .app-shell::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: linear-gradient(
+      120deg,
+      hsl(196 79% 35% / 0.08),
+      transparent 45%,
+      hsl(26 94% 58% / 0.08)
+    );
+    z-index: -1;
+  }
+
+  .soft-card {
+    @apply border border-border/70 bg-card/90 shadow-[0_12px_40px_-25px_rgba(15,23,42,0.55)] backdrop-blur;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-sky-700 via-primary to-orange-500 bg-clip-text text-transparent;
+  }
+  
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  }
+  
+  .glass-effect {
+    @apply bg-white/75 dark:bg-slate-900/75 backdrop-blur-lg;
+  }
+  
+  .mentor-bubble {
+    @apply relative rounded-2xl p-4 bg-gradient-to-br from-guru-50 to-white dark:from-guru-900/20 dark:to-gray-800;
+  }
+  
+  .mentor-bubble::before {
+    content: '';
+    @apply absolute -left-2 top-4 w-4 h-4 bg-guru-50 dark:bg-guru-900/20 transform rotate-45;
+  }
+  
+  .user-bubble {
+    @apply rounded-2xl p-4 bg-gradient-to-br from-primary/10 to-white dark:from-primary/20 dark:to-gray-800;
+  }
+  
+  .progress-glow {
+    @apply shadow-[0_0_15px_rgba(14,116,144,0.35)];
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-muted rounded-full;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/30 rounded-full hover:bg-muted-foreground/50;
+}
+
+/* Selection */
+::selection {
+  @apply bg-primary/20;
+}
+
+/* Code blocks */
+pre {
+  @apply rounded-lg bg-gray-900 p-4 overflow-x-auto;
+}
+
+code {
+  @apply font-mono text-sm;
+}
+
+/* Animations */
+.animate-in {
+  animation: animate-in 0.5s ease-out;
+}
+
+@keyframes animate-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Typing indicator */
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+}
+
+.typing-indicator span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  @apply bg-primary;
+  animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+}

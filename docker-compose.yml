@@ -1,0 +1,222 @@
+# VidyaGuru AI Learning Platform
+# Production Docker Compose Configuration
+
+version: '3.8'
+
+services:
+  # =============================================================================
+  # BACKEND API
+  # =============================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: vidyaguru-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://vidyaguru:${DB_PASSWORD}@postgres:5432/vidyaguru
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-vidyaguru_redis}@redis:6379/0
+      - SECRET_KEY=${SECRET_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - CORS_ORIGINS=${CORS_ORIGINS:-["http://localhost:3000"]}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - vidyaguru-network
+    volumes:
+      - backend_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # =============================================================================
+  # FRONTEND (Next.js)
+  # =============================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+    container_name: vidyaguru-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+      - NODE_ENV=production
+    depends_on:
+      - backend
+    networks:
+      - vidyaguru-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # =============================================================================
+  # NGINX REVERSE PROXY (Production)
+  # =============================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: vidyaguru-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - vidyaguru-network
+    profiles:
+      - production
+
+  # =============================================================================
+  # POSTGRESQL DATABASE
+  # =============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: vidyaguru-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vidyaguru
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: vidyaguru
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vidyaguru -d vidyaguru"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - vidyaguru-network
+
+  # =============================================================================
+  # REDIS CACHE
+  # =============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: vidyaguru-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD:-vidyaguru_redis}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-vidyaguru_redis}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vidyaguru-network
+
+  # =============================================================================
+  # DATABASE MIGRATIONS
+  # =============================================================================
+  migrations:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: vidyaguru-migrations
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://vidyaguru:${DB_PASSWORD}@postgres:5432/vidyaguru
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - vidyaguru-network
+    profiles:
+      - migrate
+
+  # =============================================================================
+  # DEVELOPMENT TOOLS
+  # =============================================================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: vidyaguru-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@vidyaguru.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - vidyaguru-network
+    profiles:
+      - dev
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: vidyaguru-redis-commander
+    restart: unless-stopped
+    environment:
+      - REDIS_HOSTS=local:redis:6379:0:${REDIS_PASSWORD:-vidyaguru_redis}
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - vidyaguru-network
+    profiles:
+      - dev
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  vidyaguru-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  postgres_data:
+    name: vidyaguru_postgres_data
+  redis_data:
+    name: vidyaguru_redis_data
+  backend_logs:
+    name: vidyaguru_backend_logs
+  nginx_logs:
+    name: vidyaguru_nginx_logs
+  pgadmin_data:
+    name: vidyaguru_pgadmin_data
