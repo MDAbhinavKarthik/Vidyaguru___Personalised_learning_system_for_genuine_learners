@@ -1,48 +1,32 @@
 databases:
-  - name: vidyaguru_db
+  - name: vidyaguru-db
     databaseName: vidyaguru
     user: vidyaguru
     plan: free
     region: oregon
+    ipAllowList: []
 
 services:
-  # Backend API
   - type: web
-    id: backend
     name: vidyaguru-backend
     runtime: python
-    pythonVersion: 3.11
     plan: free
+    region: oregon
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port 8000
-    healthCheckPath: /health
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
-      # Database
       - key: DATABASE_URL
         fromDatabase:
-          id: vidyaguru_db
+          name: vidyaguru-db
           property: connectionString
-      
-      # Secrets
       - key: SECRET_KEY
-        scope: run
-        value: ${{ secrets.SECRET_KEY }}
-      
+        sync: false
       - key: GEMINI_API_KEY
-        scope: run
-        value: ${{ secrets.GEMINI_API_KEY }}
-      
-      # Environment
+        sync: false
       - key: ENVIRONMENT
         value: production
-      
       - key: CORS_ORIGINS
         value: '["https://your-vercel-domain.vercel.app"]'
-      
       - key: LOG_LEVEL
         value: INFO
-    
-    region: oregon
-    repo:
-      branch: main
