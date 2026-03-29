@@ -30,8 +30,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     """
     # Startup
     print("🚀 Starting VidyaGuru AI Learning Platform...")
-    await init_db()
-    print("✅ Database initialized")
+    try:
+        await init_db()
+        print("✅ Database initialized")
+    except Exception as e:
+        print(f"⚠️  Database initialization warning: {e}")
+        print("   Application will continue, but database may not be ready")
+    
     print(f"📚 API Documentation: http://localhost:8000/docs")
     print(f"🔗 OpenAPI Schema: http://localhost:8000/openapi.json")
     
@@ -39,8 +44,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     
     # Shutdown
     print("🔄 Shutting down...")
-    await close_db()
-    print("✅ Database connections closed")
+    try:
+        await close_db()
+        print("✅ Database connections closed")
+    except Exception as e:
+        print(f"⚠️  Error closing database: {e}")
 
 
 # Create FastAPI application
